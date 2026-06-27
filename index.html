@@ -1,0 +1,1570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>帳票かんたん生成システム | デモ</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --blue: #2563EB;
+      --blue-dark: #1D4ED8;
+      --blue-light: #EFF6FF;
+      --blue-mid: #BFDBFE;
+      --green: #16A34A;
+      --green-light: #F0FDF4;
+      --green-mid: #BBF7D0;
+      --orange: #EA580C;
+      --orange-light: #FFF7ED;
+      --gray-50: #F8FAFC;
+      --gray-100: #F1F5F9;
+      --gray-200: #E2E8F0;
+      --gray-400: #94A3B8;
+      --gray-600: #475569;
+      --gray-800: #1E293B;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Segoe UI', sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ─── Header ─── */
+    header {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .logo {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--blue);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .logo svg { width: 24px; height: 24px; }
+
+    .header-right { display: flex; align-items: center; gap: 12px; }
+
+    .demo-badge {
+      background: #FEF2F2;
+      color: #DC2626;
+      border: 1px solid #FECACA;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    /* ─── Hero ─── */
+    .hero {
+      background: linear-gradient(135deg, #1D4ED8 0%, #2563EB 40%, #3B82F6 100%);
+      color: white;
+      padding: 56px 32px 64px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+    }
+
+    .hero-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+
+    .hero h1 {
+      font-size: 2.4rem;
+      font-weight: 800;
+      line-height: 1.3;
+      margin-bottom: 16px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .hero p {
+      font-size: 1.05rem;
+      opacity: 0.88;
+      margin-bottom: 36px;
+      line-height: 1.7;
+    }
+
+    .hero-stats {
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .stat-chip {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 100px;
+      padding: 8px 20px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      backdrop-filter: blur(8px);
+    }
+
+    /* ─── Step Indicator ─── */
+    .step-bar {
+      background: white;
+      border-bottom: 1px solid var(--gray-200);
+      padding: 20px 32px;
+      display: flex;
+      justify-content: center;
+      position: sticky;
+      top: 60px;
+      z-index: 90;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .step-track {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      max-width: 600px;
+      width: 100%;
+    }
+
+    .step-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      position: relative;
+    }
+
+    .step-circle {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1rem;
+      border: 2px solid var(--gray-200);
+      background: white;
+      color: var(--gray-400);
+      transition: all 0.3s ease;
+    }
+
+    .step-circle.active {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: white;
+      box-shadow: 0 0 0 4px var(--blue-mid);
+    }
+
+    .step-circle.done {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+
+    .step-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--gray-400);
+      white-space: nowrap;
+    }
+
+    .step-item .step-circle.active + .step-label { color: var(--blue); }
+    .step-item .step-circle.done + .step-label { color: var(--green); }
+
+    .step-connector {
+      flex: 1;
+      height: 2px;
+      background: var(--gray-200);
+      margin: 0 8px;
+      margin-bottom: 22px;
+      transition: background 0.3s ease;
+    }
+
+    .step-connector.done { background: var(--green); }
+
+    /* ─── Main Layout ─── */
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 36px 24px 60px;
+    }
+
+    /* ─── Cards ─── */
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      border: 1px solid var(--gray-200);
+      padding: 32px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    .card-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    .icon-blue { background: var(--blue-light); }
+    .icon-green { background: var(--green-light); }
+    .icon-orange { background: var(--orange-light); }
+
+    .card h2 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--gray-800);
+    }
+
+    .card .subtitle {
+      color: var(--gray-600);
+      font-size: 0.88rem;
+      margin-left: 56px;
+      margin-bottom: 24px;
+    }
+
+    /* ─── Alert ─── */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .alert-info { background: var(--blue-light); color: #1E40AF; border-left: 3px solid var(--blue); }
+    .alert-success { background: var(--green-light); color: #15803D; border-left: 3px solid var(--green); }
+    .alert-demo { background: var(--orange-light); color: #9A3412; border-left: 3px solid var(--orange); }
+
+    .alert-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+    /* ─── Buttons ─── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.18s ease;
+      text-decoration: none;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+
+    .btn-primary {
+      background: var(--blue);
+      color: white;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: var(--blue-dark);
+      box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-demo {
+      background: linear-gradient(135deg, #EA580C, #F97316);
+      color: white;
+      font-size: 0.95rem;
+      padding: 12px 28px;
+    }
+    .btn-demo:hover:not(:disabled) {
+      box-shadow: 0 4px 16px rgba(234,88,12,0.4);
+      transform: translateY(-2px);
+    }
+
+    .btn-success {
+      background: var(--green);
+      color: white;
+    }
+    .btn-success:hover:not(:disabled) {
+      background: #15803D;
+      box-shadow: 0 4px 12px rgba(22,163,74,0.35);
+      transform: translateY(-1px);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--gray-600);
+      border: 1.5px solid var(--gray-200);
+    }
+    .btn-ghost:hover:not(:disabled) {
+      background: var(--gray-100);
+      border-color: var(--gray-400);
+    }
+
+    .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+
+    /* ─── Step sections ─── */
+    .step-section { display: none; }
+    .step-section.active {
+      display: block;
+      animation: fadeUp 0.35s ease;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ─── Upload Area ─── */
+    .upload-zone {
+      border: 2px dashed var(--blue-mid);
+      border-radius: 10px;
+      padding: 40px 32px;
+      text-align: center;
+      background: var(--blue-light);
+      margin-bottom: 20px;
+      transition: all 0.2s;
+    }
+
+    .upload-zone-icon { font-size: 2.8rem; margin-bottom: 12px; }
+
+    .upload-zone p {
+      color: var(--gray-600);
+      font-size: 0.9rem;
+      margin-bottom: 20px;
+    }
+
+    .upload-zone-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    /* ─── CSV Tab Switcher ─── */
+    .tab-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .tab-btn {
+      padding: 7px 16px;
+      border-radius: 20px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid var(--gray-200);
+      background: white;
+      color: var(--gray-600);
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+
+    .tab-btn.active {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: white;
+    }
+
+    /* ─── Data Table ─── */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      min-width: 500px;
+    }
+
+    thead th {
+      background: var(--blue);
+      color: white;
+      padding: 9px 14px;
+      font-weight: 600;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--gray-100);
+      white-space: nowrap;
+      color: var(--gray-800);
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) td { background: var(--gray-50); }
+
+    .row-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-ok { background: var(--green-light); color: var(--green); }
+    .badge-ng { background: #FEF2F2; color: #DC2626; }
+
+    /* ─── Template Grid ─── */
+    .template-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+
+    .tmpl-card {
+      border: 2px solid var(--gray-200);
+      border-radius: 10px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: white;
+    }
+
+    .tmpl-card:hover {
+      border-color: var(--blue);
+      box-shadow: var(--shadow-md);
+      transform: translateY(-2px);
+    }
+
+    .tmpl-card.selected {
+      border-color: var(--blue);
+      background: var(--blue-light);
+      box-shadow: 0 0 0 3px var(--blue-mid);
+    }
+
+    .tmpl-icon { font-size: 2rem; margin-bottom: 10px; }
+
+    .tmpl-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-bottom: 6px;
+      color: var(--gray-800);
+      line-height: 1.4;
+    }
+
+    .tmpl-desc {
+      font-size: 0.78rem;
+      color: var(--gray-600);
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .tmpl-tags { display: flex; flex-wrap: wrap; gap: 4px; }
+
+    .tag {
+      background: var(--gray-100);
+      color: var(--gray-600);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .tmpl-card.selected .tag {
+      background: var(--blue-mid);
+      color: #1E40AF;
+    }
+
+    /* ─── Mapping UI ─── */
+    .mapping-grid {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 20px;
+    }
+
+    .mapping-panel {
+      border: 1px solid var(--gray-200);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .mapping-panel-head {
+      background: var(--gray-100);
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--gray-600);
+      border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mapping-panel-body { padding: 10px; }
+
+    .mapping-chip {
+      padding: 9px 12px;
+      border-radius: 7px;
+      margin-bottom: 7px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.15s;
+      cursor: grab;
+      user-select: none;
+      line-height: 1.3;
+    }
+
+    .mapping-chip:last-child { margin-bottom: 0; }
+
+    .csv-chip {
+      background: var(--blue-light);
+      color: #1E40AF;
+      border: 1.5px solid var(--blue-mid);
+    }
+
+    .csv-chip:hover { background: var(--blue-mid); transform: translateX(2px); }
+    .csv-chip.selected-for-map { background: #FEF3C7; color: #92400E; border-color: #FDE68A; }
+    .csv-chip.dragging { opacity: 0.4; }
+    .csv-chip.used { opacity: 0.45; }
+
+    .field-chip {
+      background: #F5F3FF;
+      color: #5B21B6;
+      border: 2px dashed #DDD6FE;
+      cursor: pointer;
+      min-height: 40px;
+    }
+
+    .field-chip:hover { border-color: #7C3AED; background: #EDE9FE; }
+    .field-chip.mapped { background: var(--green-light); color: #15803D; border: 2px solid var(--green-mid); }
+    .field-chip.dragover { border-color: #5B21B6; background: #EDE9FE; }
+
+    .chip-mapped-val {
+      font-weight: 400;
+      opacity: 0.75;
+      font-size: 0.75rem;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+
+    .mapping-arrow-col {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding-top: 52px;
+      color: var(--gray-400);
+      font-size: 1.3rem;
+    }
+
+    .mapping-progress {
+      text-align: center;
+      font-size: 0.82rem;
+      color: var(--gray-600);
+      margin-bottom: 12px;
+    }
+
+    .progress-bar-wrap {
+      height: 6px;
+      background: var(--gray-200);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--blue);
+      border-radius: 3px;
+      transition: width 0.4s ease;
+    }
+
+    /* ─── Actions ─── */
+    .action-row {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      margin-top: 24px;
+    }
+
+    /* ─── Output Preview ─── */
+    .output-section {
+      border-top: 1px solid var(--gray-200);
+      padding-top: 24px;
+      margin-top: 24px;
+    }
+
+    .output-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gray-800);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ─── Info Box ─── */
+    .info-box {
+      background: var(--gray-100);
+      border-radius: 10px;
+      padding: 20px 24px;
+      margin-bottom: 20px;
+    }
+
+    .info-box-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--gray-600);
+      margin-bottom: 10px;
+    }
+
+    .info-box ul {
+      list-style: none;
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      line-height: 2;
+    }
+
+    .info-box ul li::before { content: '・'; }
+
+    /* ─── Toast ─── */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: #1E293B;
+      color: white;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      animation: slideIn 0.3s ease;
+      max-width: 320px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toast.success { background: #15803D; }
+    .toast.info    { background: #1D4ED8; }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(24px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* ─── Footer ─── */
+    footer {
+      background: #0F172A;
+      color: #64748B;
+      text-align: center;
+      padding: 28px 24px;
+      font-size: 0.82rem;
+      line-height: 2;
+    }
+
+    /* ─── Excel Canvas Layout ─── */
+    .excel-mapping-layout {
+      display: grid;
+      grid-template-columns: 1fr 210px;
+      gap: 14px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    .excel-canvas-wrap {
+      border: 1px solid #AAAAAA;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .canvas-title-bar {
+      background: #1D6F42;
+      color: white;
+      padding: 8px 14px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .canvas-badge {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.68rem;
+      white-space: nowrap;
+    }
+
+    .excel-canvas {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      font-family: 'Calibri', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+      min-width: 340px;
+    }
+
+    .ec-corner {
+      background: #E8E8E8;
+      border: 1px solid #B8B8B8;
+      width: 30px;
+      min-width: 30px;
+    }
+
+    .ec-col-header {
+      background: #E8E8E8;
+      color: #555;
+      text-align: center;
+      font-size: 0.7rem;
+      border: 1px solid #B8B8B8;
+      padding: 3px 6px;
+      user-select: none;
+      font-weight: 600;
+    }
+
+    .ec-row-num {
+      background: #E8E8E8;
+      color: #888;
+      text-align: center;
+      font-size: 0.7rem;
+      border: 1px solid #B8B8B8;
+      padding: 3px;
+      user-select: none;
+      width: 30px;
+      min-width: 30px;
+    }
+
+    .ec-title-cell {
+      background: #D6EAF8;
+      color: #1a3a5c;
+      font-weight: 700;
+      text-align: center;
+      border: 1px solid #A9CCE3;
+      padding: 7px 12px;
+      font-size: 0.88rem;
+    }
+
+    .ec-label {
+      background: #F5F5F5;
+      color: #333;
+      border: 1px solid #D0D0D0;
+      padding: 5px 8px;
+      min-width: 110px;
+      max-width: 150px;
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-align: center;
+      word-break: break-all;
+      vertical-align: middle;
+    }
+
+    .ec-drop {
+      border: 1px solid #D0D0D0;
+      padding: 4px 8px;
+      min-width: 110px;
+      height: 34px;
+      background: white;
+      cursor: default;
+      transition: background 0.15s, border-color 0.15s;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    .ec-drop.empty {
+      border: 1.5px dashed #93C5FD;
+      background: #F8FBFF;
+    }
+
+    .ec-drop.dragover {
+      background: #DBEAFE;
+      border: 2px solid #3B82F6;
+    }
+
+    .ec-drop.filled {
+      background: #F0FDF4;
+      border: 1px solid #86EFAC;
+    }
+
+    @keyframes cellPop {
+      0%   { background: #BFDBFE; }
+      100% { background: #F0FDF4; }
+    }
+    .ec-drop.just-filled { animation: cellPop 0.45s ease; }
+
+    .ec-fill-text {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #15803D;
+    }
+
+    .ec-drop-hint {
+      font-size: 0.72rem;
+      color: #93C5FD;
+      font-style: italic;
+    }
+
+    /* CSV Panel (right) */
+    .csv-panel {
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      overflow: hidden;
+      position: sticky;
+      top: 130px;
+    }
+
+    .csv-panel-head {
+      background: var(--blue);
+      color: white;
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .csv-panel-hint {
+      padding: 8px 12px;
+      font-size: 0.7rem;
+      color: var(--gray-400);
+      border-bottom: 1px solid var(--gray-200);
+      line-height: 1.6;
+      background: var(--gray-50);
+    }
+
+    .csv-chip-list {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    /* ─── Responsive ─── */
+    @media (max-width: 700px) {
+      .hero h1 { font-size: 1.7rem; }
+      .card { padding: 20px; }
+      .excel-mapping-layout { grid-template-columns: 1fr; }
+      .csv-panel { position: static; }
+      header { padding: 0 16px; }
+      .container { padding: 20px 16px 48px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ─── Header ─── -->
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+    </svg>
+    帳票かんたん生成システム
+  </div>
+  <div class="header-right">
+    <span class="demo-badge">DEMO</span>
+  </div>
+</header>
+
+<!-- ─── Hero ─── -->
+<div class="hero">
+  <div class="hero-content">
+    <h1>CSVデータを<br>取引先帳票に自動変換</h1>
+    <p>既存システムから出力したCSVを、取引先ごとに指定されたExcel帳票フォーマットへ<br>ドラッグ＆ドロップで簡単にマッピング。一度設定すれば繰り返し使えます。</p>
+    <div class="hero-stats">
+      <span class="stat-chip">📋 1,500帳票テンプレート対応</span>
+      <span class="stat-chip">📂 CSV複数ファイル対応</span>
+      <span class="stat-chip">👥 テンプレート共有機能</span>
+      <span class="stat-chip">🔁 繰り返し利用可能</span>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Step Bar ─── -->
+<div class="step-bar">
+  <div class="step-track">
+    <div class="step-item">
+      <div class="step-circle active" id="dot1">1</div>
+      <div class="step-label">CSV選択</div>
+    </div>
+    <div class="step-connector" id="line1"></div>
+    <div class="step-item">
+      <div class="step-circle" id="dot2">2</div>
+      <div class="step-label">帳票選択</div>
+    </div>
+    <div class="step-connector" id="line2"></div>
+    <div class="step-item">
+      <div class="step-circle" id="dot3">3</div>
+      <div class="step-label">生成・出力</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Main ─── -->
+<div class="container">
+
+  <!-- ====== STEP 1 ====== -->
+  <div class="step-section active" id="step1">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon icon-blue">📁</div>
+        <div>
+          <h2>STEP 1 ：CSVデータを読み込む</h2>
+        </div>
+      </div>
+      <p class="subtitle">既存システムから出力したCSVを選択します。複数ファイルの同時読み込みも可能です。</p>
+
+      <div class="alert alert-demo">
+        <span class="alert-icon">🎯</span>
+        <span>これはデモです。「デモデータを読み込む」ボタンでサンプルデータが自動で読み込まれます。実際のシステムでは、お手持ちのCSVファイルをアップロードします。</span>
+      </div>
+
+      <div class="upload-zone">
+        <div class="upload-zone-icon">📊</div>
+        <p>CSVファイルをここにドロップ<br><small>または</small></p>
+        <div class="upload-zone-actions">
+          <button class="btn btn-demo" onclick="loadDemoCSV()">🎯 デモデータを読み込む</button>
+          <button class="btn btn-ghost" onclick="toast('実際のシステムではファイル選択ダイアログが開きます', 'info')">📂 ファイルを選択（実際）</button>
+        </div>
+      </div>
+
+      <div id="csv-result" style="display:none;">
+        <div class="alert alert-success">
+          <span class="alert-icon">✅</span>
+          <span id="csv-result-msg"></span>
+        </div>
+        <div class="tab-row" id="csv-tabs"></div>
+        <div class="table-wrap"><table id="csv-table"></table></div>
+        <div class="action-row">
+          <button class="btn btn-primary" onclick="goStep(2)">帳票テンプレートを選ぶ →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">ℹ️ 実際のシステムでできること</div>
+      <ul>
+        <li>既存システムから出力される約20種類のCSVフォーマットに対応</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ====== STEP 2 ====== -->
+  <div class="step-section" id="step2">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon icon-orange">📋</div>
+        <div>
+          <h2>STEP 2 ：帳票テンプレートを選ぶ</h2>
+        </div>
+      </div>
+      <p class="subtitle">取引先から指定されたフォーマットを選択します。1,500種類のテンプレートを登録・共有できます。</p>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">💡</span>
+        <span>テンプレートは管理者が事前に登録します。登録済みのテンプレートは全担当者で共有・繰り返し利用できます。取引先が増えても随時追加可能です。</span>
+      </div>
+
+      <div class="template-grid" id="template-grid"></div>
+
+      <div id="tmpl-confirm" style="display:none;">
+        <div class="alert alert-success">
+          <span class="alert-icon">✅</span>
+          <span id="tmpl-confirm-msg"></span>
+        </div>
+        <div class="action-row">
+          <button class="btn btn-ghost" onclick="goStep(1)">← 戻る</button>
+          <button class="btn btn-primary" onclick="goStep(3)">マッピング設定へ →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">ℹ️ テンプレートについて</div>
+      <ul>
+        <li>既存のExcelファイルをそのままテンプレートとして取り込み可能</li>
+        <li>同じ業態・取引先グループでテンプレートを共有できる</li>
+        <li>テンプレートに変更があった場合は管理者が一括更新</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ====== STEP 3 ====== -->
+  <div class="step-section" id="step3">
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-icon icon-green">🔗</div>
+        <div>
+          <h2>STEP 3 ：マッピングして帳票を生成</h2>
+        </div>
+      </div>
+      <p class="subtitle">CSVの列を帳票フィールドにドラッグ＆ドロップで対応付けます。一度設定すれば次回から自動適用されます。</p>
+
+      <div class="alert alert-demo">
+        <span class="alert-icon">🎯</span>
+        <span>左のCSV列を右のフィールドにドラッグ＆ドロップしてみてください。スマホの方はCSV列→フィールドの順にタップでも設定できます。</span>
+      </div>
+
+      <div class="mapping-progress" id="map-progress-text">0 / 0 項目をマッピング済み</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar-fill" id="map-progress-bar" style="width:0%"></div>
+      </div>
+
+      <div class="excel-mapping-layout">
+        <!-- Excel Canvas -->
+        <div class="excel-canvas-wrap">
+          <div class="canvas-title-bar">
+            <span id="canvas-tmpl-name"></span>
+            <span class="canvas-badge">Excel風キャンバス</span>
+          </div>
+          <div class="table-wrap" style="border:none; border-radius:0;">
+            <table class="excel-canvas" id="excel-canvas-table"></table>
+          </div>
+        </div>
+        <!-- CSV Column Panel -->
+        <div class="csv-panel">
+          <div class="csv-panel-head">📊 CSVの列</div>
+          <p class="csv-panel-hint">セルにドラッグ＆ドロップ<br>またはタップ選択→セルをタップ</p>
+          <div id="csv-cols"></div>
+        </div>
+      </div>
+
+      <div style="text-align:center; margin-bottom: 8px;">
+        <button class="btn btn-demo" id="auto-map-btn" onclick="autoMap()">✨ AIで自動マッピング</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearMap()" style="margin-left:10px;">リセット</button>
+      </div>
+      <p style="text-align:center; font-size:0.78rem; color:var(--gray-400); margin-bottom: 8px;">※実際のシステムではAIが項目名の類似度から自動対応付けします</p>
+
+      <!-- Output -->
+      <div class="output-section" id="output-section" style="display:none;">
+        <div class="alert alert-success">
+          <span class="alert-icon">✅</span>
+          <span>マッピング完了！以下が生成される帳票データのプレビューです。</span>
+        </div>
+        <div class="output-title">📄 出力プレビュー（<span id="out-template-name"></span>）</div>
+        <div class="table-wrap"><table id="output-table"></table></div>
+        <div class="action-row">
+          <button class="btn btn-ghost" onclick="goStep(2)">← 帳票を変更</button>
+          <button class="btn btn-success" onclick="downloadCSV()">⬇️ CSVダウンロード（Excelで開ける）</button>
+          <button class="btn btn-primary" onclick="toast('実際のシステムではExcel形式でもダウンロードできます（書式・数式保持）', 'info')">📊 Excelダウンロード（実際）</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-box">
+      <div class="info-box-title">ℹ️ 2回目以降の操作は2ステップ</div>
+      <ul>
+        <li>一度マッピングを設定すると保存され、次回は「CSV選択 → 出力」だけで完了</li>
+        <li>月次・週次・日次など、同一テンプレートへのデータ差し替えに対応</li>
+        <li>出力形式はCSV・Excel・PDF・印刷に対応予定</li>
+        <li>帳票生成後の提出方法（メール・ポータル等）は運用に合わせて設計</li>
+      </ul>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<footer>
+  <div>帳票かんたん生成システム ― コンセプトデモ</div>
+  <div>このページは機能イメージの確認用デモです。実際のデータは送信・保存されません。</div>
+</footer>
+
+<div id="toast-container"></div>
+
+<script>
+// ═══════════════════════════════
+//  DEMO DATA
+// ═══════════════════════════════
+const DEMO_CSV = {
+  "温度管理記録": {
+    headers: ["日付","施設CD","施設名","担当者","朝_冷蔵(°C)","朝_冷凍(°C)","昼_冷蔵(°C)","昼_冷凍(°C)","夜_冷蔵(°C)","夜_冷凍(°C)","異常"],
+    rows: [
+      ["2026-06-01","A001","○○病院","山田 太郎","4.2","-18.5","4.1","-18.3","4.3","-18.6","なし"],
+      ["2026-06-02","A001","○○病院","山田 太郎","4.0","-18.2","4.2","-18.4","4.1","-18.5","なし"],
+      ["2026-06-03","A001","○○病院","鈴木 花子","3.9","-18.6","4.0","-18.2","4.2","-18.3","なし"],
+      ["2026-06-04","A001","○○病院","鈴木 花子","4.1","-18.4","4.3","-18.5","4.0","-18.7","なし"],
+      ["2026-06-05","A001","○○病院","山田 太郎","4.5","-18.1","4.4","-18.0","4.3","-18.2","なし"],
+    ]
+  },
+  "衛生チェック記録": {
+    headers: ["点検日","施設CD","施設名","点検者","手洗い設備","消毒液","調理器具","冷蔵庫","床・壁","総合判定"],
+    rows: [
+      ["2026-06-01","A001","○○病院","山田 太郎","○","○","○","○","○","合格"],
+      ["2026-06-08","A001","○○病院","鈴木 花子","○","○","○","△","○","合格"],
+      ["2026-06-15","A001","○○病院","山田 太郎","○","○","○","○","○","合格"],
+      ["2026-06-22","A001","○○病院","鈴木 花子","○","○","△","○","○","合格"],
+    ]
+  }
+};
+
+const TEMPLATES = [
+  {
+    id:"t1", icon:"🌡️",
+    name:"温度管理記録表（病院A様式）",
+    desc:"病院向け冷蔵・冷凍庫の日次温度記録",
+    tags:["日次","温度管理","病院"],
+    csvKey:"温度管理記録",
+    fields:["記録日","施設名","担当者氏名","午前 冷蔵庫温度(°C)","午前 冷凍庫温度(°C)","午後 冷蔵庫温度(°C)","午後 冷凍庫温度(°C)","確認サイン"]
+  },
+  {
+    id:"t2", icon:"✅",
+    name:"衛生チェックリスト（標準様式）",
+    desc:"定期衛生点検の結果を記録する標準フォーマット",
+    tags:["週次","衛生管理","標準"],
+    csvKey:"衛生チェック記録",
+    fields:["点検日","拠点名","点検実施者","手洗い確認","消毒薬確認","器具清潔度","冷蔵庫清掃","総合評価"]
+  },
+  {
+    id:"t3", icon:"📊",
+    name:"月次衛生管理報告書",
+    desc:"取引先への月次提出用まとめレポート",
+    tags:["月次","報告書"],
+    csvKey:"温度管理記録",
+    fields:["報告月","事業所名","作成者","温度異常件数","衛生不良件数","改善対応内容","次月計画","備考"]
+  },
+  {
+    id:"t4", icon:"📝",
+    name:"日次作業点検記録",
+    desc:"日々の作業内容と点検結果を記録する汎用フォーマット",
+    tags:["日次","点検"],
+    csvKey:"温度管理記録",
+    fields:["記録日時","施設名","担当者","作業内容","点検項目","結果","備考","確認者"]
+  }
+];
+
+
+// ═══════════════════════════════
+//  STATE
+// ═══════════════════════════════
+let activeCSV = "温度管理記録";
+let selectedTmpl = null;
+let mappings = {};     // { fieldName: csvColumn }
+let tapSelected = null; // for mobile tap-map
+
+// ═══════════════════════════════
+//  STEP NAVIGATION
+// ═══════════════════════════════
+function goStep(n) {
+  document.querySelectorAll('.step-section').forEach(el => el.classList.remove('active'));
+  document.getElementById('step' + n).classList.add('active');
+
+  [1,2,3].forEach(i => {
+    const dot = document.getElementById('dot' + i);
+    dot.classList.remove('active','done');
+    if (i < n)      dot.classList.add('done');
+    else if (i === n) dot.classList.add('active');
+  });
+  [1,2].forEach(i => {
+    const line = document.getElementById('line' + i);
+    if (i < n) line.classList.add('done');
+    else line.classList.remove('done');
+  });
+
+  if (n === 2) renderTemplates();
+  if (n === 3) { mappings = {}; tapSelected = null; renderMapping(); }
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ═══════════════════════════════
+//  STEP 1 — CSV
+// ═══════════════════════════════
+function loadDemoCSV() {
+  const btn = event.currentTarget;
+  btn.textContent = '⏳ 読み込み中...';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    btn.textContent = '🎯 デモデータを読み込む';
+    btn.disabled = false;
+
+    // tabs
+    const tabEl = document.getElementById('csv-tabs');
+    tabEl.innerHTML = Object.keys(DEMO_CSV).map((name, i) =>
+      `<button class="tab-btn ${i===0?'active':''}" onclick="switchCSV('${name}',this)">${name}</button>`
+    ).join('');
+
+    renderCSVTable(activeCSV);
+
+    document.getElementById('csv-result-msg').textContent =
+      `${Object.keys(DEMO_CSV).length}件のデータファイルを読み込みました（デモデータ）`;
+    document.getElementById('csv-result').style.display = 'block';
+
+    toast('デモデータを読み込みました ✅', 'success');
+  }, 700);
+}
+
+function switchCSV(name, el) {
+  activeCSV = name;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderCSVTable(name);
+}
+
+function renderCSVTable(name) {
+  const d = DEMO_CSV[name];
+  const judgmentIdx = d.headers.indexOf('総合判定');
+  const anomalyIdx = d.headers.indexOf('異常');
+
+  document.getElementById('csv-table').innerHTML =
+    `<thead><tr>${d.headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+     <tbody>${d.rows.map(row =>
+       `<tr>${row.map((cell, ci) => {
+         if ((ci === judgmentIdx || ci === anomalyIdx) && cell) {
+           const ok = cell === '合格' || cell === 'なし';
+           return `<td><span class="row-badge ${ok?'badge-ok':'badge-ng'}">${cell}</span></td>`;
+         }
+         return `<td>${cell||'—'}</td>`;
+       }).join('')}</tr>`
+     ).join('')}</tbody>`;
+}
+
+// ═══════════════════════════════
+//  STEP 2 — TEMPLATES
+// ═══════════════════════════════
+function renderTemplates() {
+  document.getElementById('template-grid').innerHTML = TEMPLATES.map(t => `
+    <div class="tmpl-card ${selectedTmpl?.id===t.id?'selected':''}" onclick="selectTemplate('${t.id}')">
+      <div class="tmpl-icon">${t.icon}</div>
+      <div class="tmpl-name">${t.name}</div>
+      <div class="tmpl-desc">${t.desc}</div>
+      <div class="tmpl-tags">${t.tags.map(tg=>`<span class="tag">${tg}</span>`).join('')}</div>
+      <div style="margin-top:10px;font-size:0.75rem;color:var(--gray-400);">${t.fields.length}項目</div>
+    </div>
+  `).join('');
+}
+
+function selectTemplate(id) {
+  selectedTmpl = TEMPLATES.find(t => t.id === id);
+  renderTemplates();
+  document.getElementById('tmpl-confirm-msg').textContent =
+    `「${selectedTmpl.name}」を選択しました`;
+  document.getElementById('tmpl-confirm').style.display = 'block';
+  toast(`「${selectedTmpl.name}」を選択`, 'info');
+}
+
+// ═══════════════════════════════
+//  STEP 3 — MAPPING
+// ═══════════════════════════════
+
+// Mapping suggestions for auto-map
+const AUTO_MAP = {
+  t1: { "記録日":"日付","施設名":"施設名","担当者氏名":"担当者","午前 冷蔵庫温度(°C)":"朝_冷蔵(°C)","午前 冷凍庫温度(°C)":"朝_冷凍(°C)","午後 冷蔵庫温度(°C)":"昼_冷蔵(°C)","午後 冷凍庫温度(°C)":"昼_冷凍(°C)" },
+  t2: { "点検日":"点検日","拠点名":"施設名","点検実施者":"点検者","手洗い確認":"手洗い設備","消毒薬確認":"消毒液","器具清潔度":"調理器具","冷蔵庫清掃":"冷蔵庫","総合評価":"総合判定" },
+  t3: {},
+  t4: {}
+};
+
+function renderMapping() {
+  if (!selectedTmpl) return;
+  const csvCols = DEMO_CSV[activeCSV].headers;
+  const fields  = selectedTmpl.fields;
+
+  // ── Excel canvas ──
+  document.getElementById('canvas-tmpl-name').textContent = selectedTmpl.name;
+
+  const hint = tapSelected ? 'タップで配置' : 'ドロップ';
+  const colLetter = i => String.fromCharCode(65 + i);
+
+  document.getElementById('excel-canvas-table').innerHTML = `
+    <thead>
+      <tr>
+        <td class="ec-corner"></td>
+        ${fields.map((_, i) => `<th class="ec-col-header">${colLetter(i)}</th>`).join('')}
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="ec-row-num">1</td>
+        <td class="ec-title-cell" colspan="${fields.length}">${selectedTmpl.name}</td>
+      </tr>
+      <tr>
+        <td class="ec-row-num">2</td>
+        ${fields.map(field => `<td class="ec-label">${field}</td>`).join('')}
+      </tr>
+      <tr>
+        <td class="ec-row-num">3</td>
+        ${fields.map(field => {
+          const mapped = mappings[field];
+          return `<td class="ec-drop ${mapped ? 'filled' : 'empty'}"
+                      data-field="${field}"
+                      ondragover="onDragOver(event)"
+                      ondragleave="onDragLeave(event)"
+                      ondrop="onDrop(event)"
+                      onclick="onTapField('${field}')">
+                    ${mapped
+                      ? `<span class="ec-fill-text">= ${mapped}</span>`
+                      : `<span class="ec-drop-hint">${hint}</span>`}
+                  </td>`;
+        }).join('')}
+      </tr>
+    </tbody>`;
+
+  // ── CSV chip list ──
+  document.getElementById('csv-cols').innerHTML =
+    `<div class="csv-chip-list">${csvCols.map(col => {
+      const isUsed = Object.values(mappings).includes(col);
+      const isSel  = tapSelected === col;
+      return `
+        <div class="mapping-chip csv-chip ${isUsed?'used':''} ${isSel?'selected-for-map':''}"
+             draggable="true"
+             data-col="${col}"
+             ondragstart="onDragStart(event)"
+             ondragend="onDragEnd(event)"
+             onclick="onTapCSV('${col}')">
+          ⠿ ${col}
+        </div>`;
+    }).join('')}</div>`;
+
+  updateProgress();
+}
+
+function updateProgress() {
+  const total = selectedTmpl?.fields.length || 0;
+  const done  = Object.keys(mappings).length;
+  document.getElementById('map-progress-text').textContent = `${done} / ${total} 項目をマッピング済み`;
+  document.getElementById('map-progress-bar').style.width = total ? `${(done/total)*100}%` : '0%';
+
+  if (done > 0) {
+    renderOutputPreview();
+    document.getElementById('output-section').style.display = 'block';
+  } else {
+    document.getElementById('output-section').style.display = 'none';
+  }
+}
+
+// ── Auto-map (AI) ──
+function autoMap() {
+  const btn = document.getElementById('auto-map-btn');
+  btn.textContent = '🔄 解析中...';
+  btn.disabled = true;
+
+  // テンプレートに紐付いたCSVへ自動切り替え
+  const targetCSV = selectedTmpl?.csvKey;
+  if (targetCSV && DEMO_CSV[targetCSV] && activeCSV !== targetCSV) {
+    activeCSV = targetCSV;
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent === targetCSV);
+    });
+    mappings = {};
+    renderMapping();
+    toast(`「${targetCSV}」に切り替えました`, 'info');
+  }
+
+  const suggestions = AUTO_MAP[selectedTmpl?.id] || {};
+  const entries = Object.entries(suggestions);
+  let i = 0;
+
+  const interval = setInterval(() => {
+    if (i >= entries.length) {
+      clearInterval(interval);
+      btn.textContent = '✨ AIで自動マッピング';
+      btn.disabled = false;
+      renderMapping();
+      toast(`${Object.keys(mappings).length}項目を自動マッピングしました ✅`, 'success');
+      return;
+    }
+    const [field, col] = entries[i];
+    mappings[field] = col;
+
+    // Flash the canvas cell as it fills
+    const cell = document.querySelector(`[data-field="${field}"]`);
+    if (cell) {
+      cell.innerHTML = `<span class="ec-fill-text">= ${col}</span>`;
+      cell.className = 'ec-drop filled just-filled';
+      setTimeout(() => cell.classList.remove('just-filled'), 500);
+    }
+    document.querySelectorAll(`[data-col="${col}"]`).forEach(el => el.classList.add('used'));
+    updateProgress();
+    i++;
+  }, 220);
+}
+
+// ── Drag & Drop ──
+let dragCol = null;
+
+function onDragStart(e) {
+  dragCol = e.currentTarget.dataset.col;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'copy';
+}
+
+function onDragEnd(e) {
+  e.currentTarget.classList.remove('dragging');
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('dragover');
+}
+
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('dragover');
+}
+
+function onDrop(e) {
+  e.preventDefault();
+  const chip = e.target.closest('[data-field]');
+  if (!chip || !dragCol) return;
+  chip.classList.remove('dragover');
+  const field = chip.dataset.field;
+  mappings[field] = dragCol;
+  dragCol = null;
+  tapSelected = null;
+  renderMapping();
+  toast(`「${field}」← 「${mappings[field]}」を設定`, 'info');
+}
+
+// ── Tap / Click mapping (mobile-friendly) ──
+function onTapCSV(col) {
+  tapSelected = tapSelected === col ? null : col;
+  renderMapping();
+}
+
+function onTapField(field) {
+  if (tapSelected) {
+    mappings[field] = tapSelected;
+    tapSelected = null;
+    renderMapping();
+    toast(`「${field}」← 「${mappings[field]}」を設定`, 'info');
+  }
+}
+
+
+function clearMap() {
+  mappings = {};
+  tapSelected = null;
+  renderMapping();
+}
+
+// ── Output Preview ──
+function renderOutputPreview() {
+  const d = DEMO_CSV[activeCSV];
+  const fields = Object.keys(mappings);
+
+  document.getElementById('out-template-name').textContent = selectedTmpl?.name || '';
+
+  document.getElementById('output-table').innerHTML =
+    `<thead><tr>${fields.map(f=>`<th>${f}</th>`).join('')}</tr></thead>
+     <tbody>${d.rows.map(row =>
+       `<tr>${fields.map(f => {
+         const col = mappings[f];
+         const ci  = d.headers.indexOf(col);
+         return `<td>${ci >= 0 ? (row[ci]||'—') : '—'}</td>`;
+       }).join('')}</tr>`
+     ).join('')}</tbody>`;
+}
+
+// ═══════════════════════════════
+//  CSV DOWNLOAD
+// ═══════════════════════════════
+function downloadCSV() {
+  const d = DEMO_CSV[activeCSV];
+  const fields = Object.keys(mappings);
+  if (!fields.length) { toast('先にマッピングを設定してください', 'info'); return; }
+
+  const BOM = '﻿';
+  const header = fields.join(',');
+  const body = d.rows.map(row =>
+    fields.map(f => {
+      const col = mappings[f];
+      const ci  = d.headers.indexOf(col);
+      let val   = ci >= 0 ? (row[ci] || '') : '';
+      if (val.includes(',') || val.includes('"') || val.includes('\n'))
+        val = '"' + val.replace(/"/g,'""') + '"';
+      return val;
+    }).join(',')
+  ).join('\n');
+
+  const blob = new Blob([BOM + header + '\n' + body], { type:'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${selectedTmpl?.name||'帳票'}_${today()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  toast('ダウンロード完了！Excelで開いてください ✅', 'success');
+}
+
+// ═══════════════════════════════
+//  UTILS
+// ═══════════════════════════════
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  const container = document.getElementById('toast-container');
+  container.appendChild(el);
+  setTimeout(() => {
+    el.style.opacity = '0';
+    el.style.transition = 'opacity 0.3s';
+    setTimeout(() => el.remove(), 300);
+  }, 3200);
+}
+
+function today() {
+  return new Date().toISOString().slice(0,10);
+}
+
+function esc(str) {
+  return str.replace(/[^a-zA-Z0-9　-鿿]/g,'_');
+}
+</script>
+</body>
+</html>
