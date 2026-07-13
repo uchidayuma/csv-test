@@ -447,6 +447,52 @@
     .badge-ok { background: var(--green-light); color: var(--green); }
     .badge-ng { background: #FEF2F2; color: #DC2626; }
 
+    /* ─── Template Search ─── */
+    .tmpl-search-wrap {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .tmpl-search-input {
+      width: 100%;
+      padding: 11px 16px 11px 40px;
+      border-radius: 8px;
+      border: 1.5px solid var(--gray-200);
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--gray-800);
+      transition: border-color 0.15s;
+    }
+
+    .tmpl-search-input:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    .tmpl-search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.9rem;
+      pointer-events: none;
+      opacity: 0.6;
+    }
+
+    .tmpl-search-count {
+      font-size: 0.78rem;
+      color: var(--gray-400);
+      margin: -8px 0 16px 4px;
+    }
+
+    .tmpl-empty-msg {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--gray-400);
+      font-size: 0.9rem;
+    }
+
     /* ─── Template Grid ─── */
     .template-grid {
       display: grid;
@@ -922,7 +968,7 @@
     <h1>CSVデータを<br>取引先帳票に自動変換</h1>
     <p>既存システムから出力したCSVを、取引先ごとに指定されたExcel帳票フォーマットへ<br>ドラッグ＆ドロップで簡単にマッピング。一度設定すれば繰り返し使えます。</p>
     <div class="hero-stats">
-      <span class="stat-chip">📋 1,500帳票テンプレート対応</span>
+      <span class="stat-chip">📋 複数帳票テンプレート対応</span>
       <span class="stat-chip">📂 CSV複数ファイル対応</span>
       <span class="stat-chip">👥 テンプレート共有機能</span>
       <span class="stat-chip">🔁 繰り返し利用可能</span>
@@ -1010,12 +1056,18 @@
           <h2>STEP 2 ：帳票テンプレートを選ぶ</h2>
         </div>
       </div>
-      <p class="subtitle">取引先から指定されたフォーマットを選択します。1,500種類のテンプレートを登録・共有できます。</p>
+      <p class="subtitle">取引先から指定されたフォーマットを選択します。複数種類のテンプレートを登録・共有できます。</p>
 
       <div class="alert alert-info">
         <span class="alert-icon">💡</span>
         <span>テンプレートは管理者が事前に登録します。登録済みのテンプレートは全担当者で共有・繰り返し利用できます。取引先が増えても随時追加可能です。</span>
       </div>
+
+      <div class="tmpl-search-wrap">
+        <span class="tmpl-search-icon">🔍</span>
+        <input type="text" id="tmpl-search" class="tmpl-search-input" placeholder="テンプレートを検索（例：温度、衛生、月次 など）" oninput="filterTemplates()">
+      </div>
+      <div class="tmpl-search-count" id="tmpl-search-count"></div>
 
       <div class="template-grid" id="template-grid"></div>
 
@@ -1098,7 +1150,7 @@
         <div class="table-wrap"><table id="output-table"></table></div>
         <div class="action-row">
           <button class="btn btn-ghost" onclick="goStep(2)">← 帳票を変更</button>
-          <button class="btn btn-success" onclick="downloadCSV()">⬇️ CSVダウンロード（Excelで開ける）</button>
+          <button class="btn btn-success" onclick="downloadCSV()">⬇️ CSVダウンロード</button>
           <button class="btn btn-primary" onclick="toast('実際のシステムではExcel形式でもダウンロードできます（書式・数式保持）', 'info')">📊 Excelダウンロード（実際）</button>
         </div>
       </div>
@@ -1182,6 +1234,22 @@ const TEMPLATES = [
     tags:["日次","点検"],
     csvKey:"温度管理記録",
     fields:["記録日時","施設名","担当者","作業内容","点検項目","結果","備考","確認者"]
+  },
+  {
+    id:"t5", icon:"🚪",
+    name:"入退室管理記録",
+    desc:"施設への入退室状況を記録する管理表",
+    tags:["日次","入退室","施設管理"],
+    csvKey:"温度管理記録",
+    fields:["記録日","施設名","記録者","入室時刻","退室時刻","訪問目的","備考"]
+  },
+  {
+    id:"t6", icon:"🧯",
+    name:"防火設備点検表",
+    desc:"消防用設備の定期点検結果を記録するフォーマット",
+    tags:["月次","設備点検","防災"],
+    csvKey:"衛生チェック記録",
+    fields:["点検日","施設名","点検者","消火器","誘導灯","非常口","総合判定"]
   }
 ];
 
@@ -1275,8 +1343,52 @@ function renderCSVTable(name) {
 // ═══════════════════════════════
 //  STEP 2 — TEMPLATES
 // ═══════════════════════════════
+let templateSearchQuery = '';
+
+function fuzzyMatch(query, target) {
+  query = query.trim().toLowerCase();
+  if (!query) return true;
+  target = target.toLowerCase();
+  if (target.includes(query)) return true;
+
+  // ゆるい（曖昧な）部分一致：クエリの文字が順番通りに現れればマッチ
+  let ti = 0;
+  for (const ch of query) {
+    if (ch === ' ') continue;
+    ti = target.indexOf(ch, ti);
+    if (ti === -1) return false;
+    ti++;
+  }
+  return true;
+}
+
+function getFilteredTemplates() {
+  if (!templateSearchQuery.trim()) return TEMPLATES;
+  return TEMPLATES.filter(t =>
+    fuzzyMatch(templateSearchQuery, `${t.name} ${t.desc} ${t.tags.join(' ')}`)
+  );
+}
+
+function filterTemplates() {
+  templateSearchQuery = document.getElementById('tmpl-search').value;
+  renderTemplates();
+}
+
 function renderTemplates() {
-  document.getElementById('template-grid').innerHTML = TEMPLATES.map(t => `
+  const list = getFilteredTemplates();
+  const countEl = document.getElementById('tmpl-search-count');
+
+  countEl.textContent = templateSearchQuery.trim()
+    ? `${list.length}件のテンプレートが見つかりました`
+    : '';
+
+  if (list.length === 0) {
+    document.getElementById('template-grid').innerHTML =
+      `<div class="tmpl-empty-msg">🔍 一致するテンプレートが見つかりませんでした</div>`;
+    return;
+  }
+
+  document.getElementById('template-grid').innerHTML = list.map(t => `
     <div class="tmpl-card ${selectedTmpl?.id===t.id?'selected':''}" onclick="selectTemplate('${t.id}')">
       <div class="tmpl-icon">${t.icon}</div>
       <div class="tmpl-name">${t.name}</div>
@@ -1305,7 +1417,9 @@ const AUTO_MAP = {
   t1: { "記録日":"日付","施設名":"施設名","担当者氏名":"担当者","午前 冷蔵庫温度(°C)":"朝_冷蔵(°C)","午前 冷凍庫温度(°C)":"朝_冷凍(°C)","午後 冷蔵庫温度(°C)":"昼_冷蔵(°C)","午後 冷凍庫温度(°C)":"昼_冷凍(°C)" },
   t2: { "点検日":"点検日","拠点名":"施設名","点検実施者":"点検者","手洗い確認":"手洗い設備","消毒薬確認":"消毒液","器具清潔度":"調理器具","冷蔵庫清掃":"冷蔵庫","総合評価":"総合判定" },
   t3: {},
-  t4: {}
+  t4: {},
+  t5: {},
+  t6: {}
 };
 
 function renderMapping() {
